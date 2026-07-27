@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TaskFlow — Project & Task Tracker</title>
+<link rel="stylesheet" href="styles.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">TF</div>
+      <div class="brand-name">TaskFlow</div>
+    </div>
+
+    <button class="btn-primary" id="btnAddProject">+ New Project</button>
+
+    <div class="nav-section">
+      <div class="nav-item active" data-view="dashboard">
+        <span class="nav-icon">◱</span> Dashboard
+      </div>
+      <div class="nav-item" data-view="calendar">
+        <span class="nav-icon">▤</span> Calendar
+      </div>
+    </div>
+
+    <div class="nav-section projects-section">
+      <div class="nav-section-title">Projects</div>
+      <div id="projectList" class="project-list"></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-ghost" id="btnExport">Export data</button>
+      <label class="btn-ghost" for="importFile">Import data</label>
+      <input type="file" id="importFile" accept="application/json" hidden />
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="topbar-title" id="viewTitle">Dashboard</div>
+      <div class="topbar-date" id="todayDate"></div>
+    </header>
+
+    <!-- DASHBOARD VIEW -->
+    <section id="view-dashboard" class="view active">
+
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-label">Total Tasks</div>
+          <div class="stat-value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Completed</div>
+          <div class="stat-value" id="statDone">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">In Progress</div>
+          <div class="stat-value" id="statProgress">0</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Overdue</div>
+          <div class="stat-value" id="statOverdue">0</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Overall Progress</div>
+          <div class="progress-ring-wrap">
+            <canvas id="chartOverall" height="180"></canvas>
+            <div class="progress-ring-label" id="overallPct">0%</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Tasks by Priority</div>
+          <canvas id="chartPriority" height="180"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Project Progress</div>
+          <div id="projectProgressList" class="project-progress-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Upcoming & Overdue</div>
+          <div id="upcomingList" class="upcoming-list"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CALENDAR VIEW -->
+    <section id="view-calendar" class="view">
+      <div class="calendar-header">
+        <button id="calPrev" class="btn-ghost">‹</button>
+        <div id="calMonthLabel" class="calendar-month-label"></div>
+        <button id="calNext" class="btn-ghost">›</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </section>
+
+    <!-- PROJECT VIEW -->
+    <section id="view-project" class="view">
+      <div class="project-header">
+        <div>
+          <div class="project-header-name" id="projTitle"></div>
+          <div class="project-header-sub" id="projSub"></div>
+        </div>
+        <div class="project-header-actions">
+          <button class="btn-secondary" id="btnAddSubproject">+ Sub-project</button>
+          <button class="btn-primary" id="btnAddTask">+ Task</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <span class="filter-label">Priority:</span>
+        <button class="chip active" data-priority="all">All</button>
+        <button class="chip priority-low" data-priority="low">Low</button>
+        <button class="chip priority-medium" data-priority="medium">Medium</button>
+        <button class="chip priority-high" data-priority="high">High</button>
+        <button class="chip priority-urgent" data-priority="urgent">Urgent</button>
+
+        <span class="filter-label" style="margin-left:16px;">Status:</span>
+        <select id="statusFilter" class="select-filter">
+          <option value="all">All</option>
+          <option value="todo">To Do</option>
+          <option value="in-progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+
+      <div id="subprojectGroups"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL: Project -->
+<div class="modal-overlay" id="modalProject">
+  <div class="modal">
+    <div class="modal-title">New Project</div>
+    <label class="field-label">Project name</label>
+    <input type="text" id="inputProjectName" class="field-input" placeholder="e.g. Website Redesign" />
+    <label class="field-label">Color</label>
+    <div class="color-picker" id="colorPicker"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" data-close="modalProject">Cancel</button>
+      <button class="btn-primary" id="saveProject">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Sub-project -->
+<div class="modal-overlay" id="modalSubproject">
+  <div class="modal">
+    <div class="modal-title">New Sub-project</div>
+    <label class="field-label">Sub-project name</label>
+    <input type="text" id="inputSubprojectName" class="field-input" placeholder="e.g. Homepage" />
+    <div class="modal-actions">
+      <button class="btn-secondary" data-close="modalSubproject">Cancel</button>
+      <button class="btn-primary" id="saveSubproject">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Task -->
+<div class="modal-overlay" id="modalTask">
+  <div class="modal">
+    <div class="modal-title" id="taskModalTitle">New Task</div>
+    <label class="field-label">Task title</label>
+    <input type="text" id="inputTaskTitle" class="field-input" placeholder="e.g. Design hero section" />
+
+    <label class="field-label">Description</label>
+    <textarea id="inputTaskDesc" class="field-input" rows="2" placeholder="Optional details"></textarea>
+
+    <label class="field-label">Sub-project</label>
+    <select id="inputTaskSubproject" class="field-input"></select>
+
+    <div class="field-row">
+      <div>
+        <label class="field-label">Priority</label>
+        <select id="inputTaskPriority" class="field-input">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Due date</label>
+        <input type="date" id="inputTaskDue" class="field-input" />
+      </div>
+    </div>
+
+    <label class="field-label">Status</label>
+    <select id="inputTaskStatus" class="field-input">
+      <option value="todo">To Do</option>
+      <option value="in-progress">In Progress</option>
+      <option value="done">Done</option>
+    </select>
+
+    <input type="hidden" id="inputTaskId" />
+
+    <div class="modal-actions">
+      <button class="btn-danger" id="deleteTask" style="display:none;">Delete</button>
+      <button class="btn-secondary" data-close="modalTask">Cancel</button>
+      <button class="btn-primary" id="saveTask">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
