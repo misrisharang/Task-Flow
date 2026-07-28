@@ -34,6 +34,13 @@
       <div id="projectList" class="project-list"></div>
     </div>
 
+    <div class="nav-section archived-section" id="archivedSection" style="display:none;">
+      <div class="nav-section-title archived-toggle" id="archivedToggle">
+        Archived (<span id="archivedCount">0</span>) <span id="archivedCaret">▾</span>
+      </div>
+      <div id="archivedList" class="project-list" style="display:none;"></div>
+    </div>
+
     <div class="sidebar-footer">
       <button class="btn-ghost" id="btnExport">Export data</button>
       <label class="btn-ghost" for="importFile">Import data</label>
@@ -46,7 +53,10 @@
 
     <header class="topbar">
       <div class="topbar-title" id="viewTitle">Dashboard</div>
-      <div class="topbar-date" id="todayDate"></div>
+      <div class="topbar-right">
+        <input type="text" id="globalSearch" class="search-input" placeholder="Search tasks..." />
+        <div class="topbar-date" id="todayDate"></div>
+      </div>
     </header>
 
     <!-- DASHBOARD VIEW -->
@@ -114,7 +124,12 @@
     <section id="view-project" class="view">
       <div class="project-header">
         <div>
-          <div class="project-header-name" id="projTitle"></div>
+          <div class="project-header-name-row">
+            <div class="project-header-name" id="projTitle"></div>
+            <button class="icon-btn" id="btnEditProject" title="Rename / recolor project">✎</button>
+            <button class="icon-btn" id="btnArchiveProject" title="Archive project">🗄</button>
+            <button class="icon-btn danger" id="btnDeleteProject" title="Delete project">🗑</button>
+          </div>
           <div class="project-header-sub" id="projSub"></div>
         </div>
         <div class="project-header-actions">
@@ -143,18 +158,30 @@
       <div id="subprojectGroups"></div>
     </section>
 
+    <!-- SEARCH VIEW -->
+    <section id="view-search" class="view">
+      <div class="project-header">
+        <div>
+          <div class="project-header-name">Search results</div>
+          <div class="project-header-sub" id="searchSub"></div>
+        </div>
+      </div>
+      <div id="searchResults"></div>
+    </section>
+
   </main>
 </div>
 
 <!-- MODAL: Project -->
 <div class="modal-overlay" id="modalProject">
   <div class="modal">
-    <div class="modal-title">New Project</div>
+    <div class="modal-title" id="projectModalTitle">New Project</div>
     <label class="field-label">Project name</label>
     <input type="text" id="inputProjectName" class="field-input" placeholder="e.g. Website Redesign" />
     <label class="field-label">Color</label>
     <div class="color-picker" id="colorPicker"></div>
     <div class="modal-actions">
+      <button class="btn-danger" id="deleteProjectInModal" style="display:none;">Delete</button>
       <button class="btn-secondary" data-close="modalProject">Cancel</button>
       <button class="btn-primary" id="saveProject">Create</button>
     </div>
@@ -164,10 +191,11 @@
 <!-- MODAL: Sub-project -->
 <div class="modal-overlay" id="modalSubproject">
   <div class="modal">
-    <div class="modal-title">New Sub-project</div>
+    <div class="modal-title" id="subprojectModalTitle">New Sub-project</div>
     <label class="field-label">Sub-project name</label>
     <input type="text" id="inputSubprojectName" class="field-input" placeholder="e.g. Homepage" />
     <div class="modal-actions">
+      <button class="btn-danger" id="deleteSubprojectInModal" style="display:none;">Delete</button>
       <button class="btn-secondary" data-close="modalSubproject">Cancel</button>
       <button class="btn-primary" id="saveSubproject">Create</button>
     </div>
