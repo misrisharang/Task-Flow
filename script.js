@@ -61,8 +61,20 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+// Formats a Date as YYYY-MM-DD using its LOCAL time zone fields.
+// (Deliberately not toISOString(), which is UTC-based and gives the wrong
+// day for anyone ahead of UTC, e.g. IST, once local time passes midnight
+// but UTC hasn't rolled over yet — this previously caused "today",
+// "overdue", and the 7-day completed count to be off by a day.)
+function toLocalISO(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalISO(new Date());
 }
 
 /* ---------- Navigation ---------- */
@@ -689,7 +701,7 @@ function renderDashboard() {
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // rolling 7-day window including today
-  const sevenAgoISO = sevenDaysAgo.toISOString().slice(0, 10);
+  const sevenAgoISO = toLocalISO(sevenDaysAgo);
   const completed7d = allTasks.filter(t => t.status === "done" && t.completedAt && t.completedAt >= sevenAgoISO).length;
 
   document.getElementById("statTotal").textContent = total;
