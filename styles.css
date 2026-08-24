@@ -229,7 +229,7 @@ body {
 /* Stat cards */
 .stat-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -275,6 +275,38 @@ body {
 .ppl-pct { color: var(--text-dim); }
 .progress-bar-track { height: 7px; background: var(--bg); border-radius: 6px; overflow: hidden; }
 .progress-bar-fill { height: 100%; border-radius: 6px; background: var(--accent); }
+
+.today-tasks-list { display: flex; flex-direction: column; gap: 8px; }
+
+.today-task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.today-task-row:hover { border-color: var(--accent); }
+.today-task-row.done { opacity: 0.5; }
+.today-task-row.done .task-title { text-decoration: line-through; }
+.today-task-path { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+.archived-toggle-link {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 2px;
+  text-decoration: underline;
+}
+.archived-toggle-link:hover { color: var(--text); }
+
+.archived-tasks-wrap { margin-top: 4px; margin-bottom: 6px; }
+.archived-tasks-wrap .task-row { opacity: 0.55; cursor: default; }
+.archived-tasks-wrap .task-row:hover { border-color: var(--border); }
 
 .upcoming-list { display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow-y: auto; }
 .upcoming-item {

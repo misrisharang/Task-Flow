@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskFlow — Project & Task Tracker</title>
 <link rel="stylesheet" href="styles.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -79,21 +78,15 @@
           <div class="stat-label">Overdue</div>
           <div class="stat-value" id="statOverdue">0</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">Completed (7 days)</div>
+          <div class="stat-value" id="statCompleted7d">0</div>
+        </div>
       </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Overall Progress</div>
-          <div class="progress-ring-wrap">
-            <canvas id="chartOverall" height="180"></canvas>
-            <div class="progress-ring-label" id="overallPct">0%</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Tasks by Priority</div>
-          <canvas id="chartPriority" height="180"></canvas>
-        </div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title">Today's Tasks — <span id="todayDateLabel"></span></div>
+        <div id="todayTasksList" class="today-tasks-list"></div>
       </div>
 
       <div class="grid-2">

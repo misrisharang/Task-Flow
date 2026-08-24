@@ -43,6 +43,13 @@ function migrateState(data) {
   data.projects.forEach(p => {
     if (typeof p.archived !== "boolean") p.archived = false;
   });
+  data.tasks.forEach(t => {
+    if (typeof t.archived !== "boolean") t.archived = false;
+    // Unknown for pre-existing done tasks (we can't know when they were actually completed) —
+    // left null on purpose so the "Completed (7 days)" stat doesn't guess. It'll start counting
+    // correctly for any task marked done from here on.
+    if (typeof t.completedAt === "undefined") t.completedAt = null;
+  });
   return data;
 }
 
@@ -189,9 +196,13 @@ function renderSubprojectGroups(project) {
   }
 
   subs.forEach(sub => {
-    let tasks = state.tasks.filter(t => t.subprojectId === sub.id);
+    // Archived tasks are hidden from the active list by default (but stay in the data,
+    // so dashboard/project counts are unaffected).
+    let tasks = state.tasks.filter(t => t.subprojectId === sub.id && !t.archived);
     if (currentPriorityFilter !== "all") tasks = tasks.filter(t => t.priority === currentPriorityFilter);
     if (statusFilter !== "all") tasks = tasks.filter(t => t.status === statusFilter);
+
+    const archivedTasks = state.tasks.filter(t => t.subprojectId === sub.id && t.archived);
 
     const block = document.createElement("div");
     block.className = "subproject-block";
@@ -220,6 +231,25 @@ function renderSubprojectGroups(project) {
       tasks.forEach(task => taskContainer.appendChild(renderTaskRow(task)));
     }
 
+    if (archivedTasks.length > 0) {
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "archived-toggle-link";
+      toggleBtn.textContent = `${archivedTasks.length} archived task${archivedTasks.length !== 1 ? "s" : ""} — show`;
+      const archivedWrap = document.createElement("div");
+      archivedWrap.className = "archived-tasks-wrap";
+      archivedWrap.style.display = "none";
+      archivedTasks.forEach(task => archivedWrap.appendChild(renderTaskRow(task, { readonly: true })));
+
+      toggleBtn.addEventListener("click", () => {
+        const showing = archivedWrap.style.display !== "none";
+        archivedWrap.style.display = showing ? "none" : "block";
+        toggleBtn.textContent = `${archivedTasks.length} archived task${archivedTasks.length !== 1 ? "s" : ""} — ${showing ? "show" : "hide"}`;
+      });
+
+      block.appendChild(toggleBtn);
+      block.appendChild(archivedWrap);
+    }
+
     // Allow dropping a dragged task onto the block itself (moves to end of this sub-project)
     block.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -238,31 +268,69 @@ function renderSubprojectGroups(project) {
   });
 }
 
-function renderTaskRow(task) {
+// Toggles a task's done state and stamps/clears completedAt so the
+// "Completed (7 days)" dashboard stat and future features can rely on it.
+function toggleTaskDone(task) {
+  if (task.status === "done") {
+    task.status = "todo";
+    task.completedAt = null;
+  } else {
+    task.status = "done";
+    task.completedAt = todayISO();
+  }
+  saveState();
+}
+
+function renderTaskRow(task, opts) {
+  opts = opts || {};
   const row = document.createElement("div");
   row.className = "task-row" + (task.status === "done" ? " done" : "");
-  row.draggable = true;
+  row.draggable = !opts.readonly;
 
   const overdue = task.dueDate && task.dueDate < todayISO() && task.status !== "done";
+  const showArchiveBtn = !opts.readonly && task.status === "done" && !task.archived;
 
   row.innerHTML = `
-    <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+    ${opts.readonly ? "" : `<span class="drag-handle" title="Drag to reorder">⋮⋮</span>`}
     <div class="task-checkbox ${task.status === "done" ? "checked" : ""}" data-id="${task.id}">${task.status === "done" ? "✓" : ""}</div>
     <div class="task-title">${escapeHtml(task.title)}</div>
     <div class="task-meta">
       <span class="priority-badge priority-${task.priority}">${task.priority}</span>
       ${task.dueDate ? `<span class="task-due ${overdue ? "overdue" : ""}">${formatDate(task.dueDate)}</span>` : ""}
+      ${showArchiveBtn ? `<button class="icon-btn" data-action="archive-task" title="Archive task">📥</button>` : ""}
+      ${opts.readonly ? `<button class="icon-btn" data-action="unarchive-task" title="Unarchive task">↩</button>` : ""}
     </div>
   `;
 
   row.querySelector(".task-checkbox").addEventListener("click", (e) => {
     e.stopPropagation();
-    task.status = task.status === "done" ? "todo" : "done";
-    saveState();
+    toggleTaskDone(task);
     renderProjectView();
   });
 
+  const archiveBtn = row.querySelector('[data-action="archive-task"]');
+  if (archiveBtn) {
+    archiveBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      task.archived = true;
+      saveState();
+      renderProjectView();
+    });
+  }
+
+  const unarchiveBtn = row.querySelector('[data-action="unarchive-task"]');
+  if (unarchiveBtn) {
+    unarchiveBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      task.archived = false;
+      saveState();
+      renderProjectView();
+    });
+  }
+
   row.addEventListener("click", () => openTaskModal(task));
+
+  if (opts.readonly) return row;
 
   // Drag and drop reordering / moving between sub-projects
   row.addEventListener("dragstart", (e) => {
@@ -524,9 +592,16 @@ document.getElementById("saveTask").addEventListener("click", () => {
 
   if (editingTaskId) {
     const t = state.tasks.find(t => t.id === editingTaskId);
+    const wasDone = t.status === "done";
     Object.assign(t, data);
+    if (data.status === "done" && !wasDone) t.completedAt = todayISO();
+    if (data.status !== "done") t.completedAt = null;
   } else {
-    state.tasks.push({ id: uid(), ...data, createdAt: todayISO() });
+    state.tasks.push({
+      id: uid(), ...data, archived: false,
+      completedAt: data.status === "done" ? todayISO() : null,
+      createdAt: todayISO()
+    });
   }
   saveState();
   closeModal("modalTask");
@@ -562,7 +637,7 @@ function renderSearchResults(query) {
   document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
 
   const matches = state.tasks.filter(t =>
-    t.title.toLowerCase().includes(query) || (t.description || "").toLowerCase().includes(query)
+    !t.archived && (t.title.toLowerCase().includes(query) || (t.description || "").toLowerCase().includes(query))
   );
 
   document.getElementById("searchSub").textContent = `${matches.length} task${matches.length !== 1 ? "s" : ""} matching "${query}"`;
@@ -605,8 +680,6 @@ function renderSearchResults(query) {
 
 /* ---------- Dashboard ---------- */
 
-let chartOverall, chartPriority;
-
 function renderDashboard() {
   const allTasks = state.tasks;
   const total = allTasks.length;
@@ -614,55 +687,68 @@ function renderDashboard() {
   const inProgress = allTasks.filter(t => t.status === "in-progress").length;
   const overdue = allTasks.filter(t => t.dueDate && t.dueDate < todayISO() && t.status !== "done").length;
 
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // rolling 7-day window including today
+  const sevenAgoISO = sevenDaysAgo.toISOString().slice(0, 10);
+  const completed7d = allTasks.filter(t => t.status === "done" && t.completedAt && t.completedAt >= sevenAgoISO).length;
+
   document.getElementById("statTotal").textContent = total;
   document.getElementById("statDone").textContent = done;
   document.getElementById("statProgress").textContent = inProgress;
   document.getElementById("statOverdue").textContent = overdue;
+  document.getElementById("statCompleted7d").textContent = completed7d;
 
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  document.getElementById("overallPct").textContent = pct + "%";
-
-  // Overall doughnut
-  const ctx1 = document.getElementById("chartOverall").getContext("2d");
-  if (chartOverall) chartOverall.destroy();
-  chartOverall = new Chart(ctx1, {
-    type: "doughnut",
-    data: {
-      labels: ["Done", "Remaining"],
-      datasets: [{ data: [done, total - done], backgroundColor: ["#3ecf8e", "#232b3d"], borderWidth: 0 }]
-    },
-    options: {
-      cutout: "72%",
-      plugins: { legend: { display: false } }
-    }
-  });
-
-  // Priority bar
-  const byPriority = { low: 0, medium: 0, high: 0, urgent: 0 };
-  allTasks.forEach(t => { if (byPriority[t.priority] !== undefined) byPriority[t.priority]++; });
-  const ctx2 = document.getElementById("chartPriority").getContext("2d");
-  if (chartPriority) chartPriority.destroy();
-  chartPriority = new Chart(ctx2, {
-    type: "bar",
-    data: {
-      labels: ["Low", "Medium", "High", "Urgent"],
-      datasets: [{
-        data: [byPriority.low, byPriority.medium, byPriority.high, byPriority.urgent],
-        backgroundColor: ["#4fb0ff", "#f5b942", "#ff8b4f", "#ff4f6b"],
-        borderRadius: 6
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: "#8b93a7" } },
-        y: { grid: { color: "#232b3d" }, ticks: { color: "#8b93a7", precision: 0 } }
-      }
-    }
-  });
-
+  renderTodayTasks();
   renderProjectProgress();
   renderUpcoming();
+}
+
+function renderTodayTasks() {
+  const today = todayISO();
+  document.getElementById("todayDateLabel").textContent = formatDate(today);
+
+  const list = document.getElementById("todayTasksList");
+  list.innerHTML = "";
+
+  const todays = state.tasks
+    .filter(t => t.dueDate === today && !t.archived)
+    .sort((a, b) => (a.status === "done") - (b.status === "done"));
+
+  if (todays.length === 0) {
+    list.innerHTML = '<div class="empty-note">Nothing due today.</div>';
+    return;
+  }
+
+  todays.forEach(task => {
+    const sub = state.subprojects.find(s => s.id === task.subprojectId);
+    const project = sub ? state.projects.find(p => p.id === sub.projectId) : null;
+
+    const row = document.createElement("div");
+    row.className = "today-task-row" + (task.status === "done" ? " done" : "");
+    row.innerHTML = `
+      <div class="task-checkbox ${task.status === "done" ? "checked" : ""}">${task.status === "done" ? "✓" : ""}</div>
+      <div style="flex:1;">
+        <div class="task-title">${escapeHtml(task.title)}</div>
+        <div class="today-task-path">${project ? escapeHtml(project.name) : "Unknown project"}${sub ? " › " + escapeHtml(sub.name) : ""}</div>
+      </div>
+      <span class="priority-badge priority-${task.priority}">${task.priority}</span>
+    `;
+
+    row.querySelector(".task-checkbox").addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleTaskDone(task);
+      renderDashboard();
+    });
+
+    row.addEventListener("click", () => {
+      if (project) {
+        openProject(project.id);
+        setTimeout(() => openTaskModal(task), 50);
+      }
+    });
+
+    list.appendChild(row);
+  });
 }
 
 function renderProjectProgress() {
@@ -750,7 +836,7 @@ function renderCalendar() {
     cell.className = "cal-cell" + (dateStr === today ? " today" : "");
     cell.innerHTML = `<div class="cal-date">${d}</div>`;
 
-    const tasksToday = state.tasks.filter(t => t.dueDate === dateStr);
+    const tasksToday = state.tasks.filter(t => t.dueDate === dateStr && !t.archived);
     tasksToday.forEach(t => {
       const tag = document.createElement("div");
       tag.className = "cal-task priority-" + t.priority;
