@@ -293,10 +293,20 @@ function toggleTaskDone(task) {
   saveState();
 }
 
+// Deterministic small tilt per task (based on its id) so sticky notes look
+// hand-placed but don't jitter to a different angle on every re-render.
+const NOTE_ANGLES = [-1.6, -1.1, -0.5, 0.5, 1.1, 1.6];
+function noteRotation(id) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return NOTE_ANGLES[hash % NOTE_ANGLES.length];
+}
+
 function renderTaskRow(task, opts) {
   opts = opts || {};
   const row = document.createElement("div");
-  row.className = "task-row" + (task.status === "done" ? " done" : "");
+  row.className = "task-row note-" + task.priority + (task.status === "done" ? " done" : "");
+  row.style.setProperty("--note-rot", (opts.readonly ? 0 : noteRotation(task.id)) + "deg");
   row.draggable = !opts.readonly;
 
   const overdue = task.dueDate && task.dueDate < todayISO() && task.status !== "done";
@@ -736,7 +746,8 @@ function renderTodayTasks() {
     const project = sub ? state.projects.find(p => p.id === sub.projectId) : null;
 
     const row = document.createElement("div");
-    row.className = "today-task-row" + (task.status === "done" ? " done" : "");
+    row.className = "today-task-row note-" + task.priority + (task.status === "done" ? " done" : "");
+    row.style.setProperty("--note-rot", noteRotation(task.id) + "deg");
     row.innerHTML = `
       <div class="task-checkbox ${task.status === "done" ? "checked" : ""}">${task.status === "done" ? "✓" : ""}</div>
       <div style="flex:1;">

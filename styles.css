@@ -282,16 +282,12 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
   padding: 10px 14px;
   cursor: pointer;
 }
-.today-task-row:hover { border-color: var(--accent); }
-.today-task-row.done { opacity: 0.5; }
+.today-task-row.done { opacity: 0.6; }
 .today-task-row.done .task-title { text-decoration: line-through; }
-.today-task-path { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.today-task-path { font-size: 11px; margin-top: 2px; }
 
 .archived-toggle-link {
   background: none;
@@ -305,8 +301,7 @@ body {
 .archived-toggle-link:hover { color: var(--text); }
 
 .archived-tasks-wrap { margin-top: 4px; margin-bottom: 6px; }
-.archived-tasks-wrap .task-row { opacity: 0.55; cursor: default; }
-.archived-tasks-wrap .task-row:hover { border-color: var(--border); }
+.archived-tasks-wrap .task-row:hover { box-shadow: 0 3px 6px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.12); }
 
 .upcoming-list { display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow-y: auto; }
 .upcoming-item {
@@ -393,24 +388,91 @@ body {
 .subproject-title .icon-btn { opacity: 0.5; }
 .subproject-title .icon-btn:hover { opacity: 1; }
 
+/* ---------- Sticky-note style task cards ----------
+   Applies to .task-row (project view) and .today-task-row (dashboard).
+   Color comes from priority; everything else on the app stays as-is. */
+
 .task-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 6px;
   padding: 12px 14px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   cursor: pointer;
 }
-.task-row:hover { border-color: var(--accent); }
-.task-row.done { opacity: 0.55; }
-.task-row.done .task-title { text-decoration: line-through; }
+
+.task-row,
+.today-task-row {
+  position: relative;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.12);
+  transform: rotate(var(--note-rot, 0deg));
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  color: #2c2a1f;
+}
+.task-row:hover,
+.today-task-row:hover {
+  transform: rotate(0deg) translateY(-2px);
+  box-shadow: 0 8px 14px rgba(0,0,0,0.22), 0 2px 4px rgba(0,0,0,0.14);
+  z-index: 1;
+}
+
+/* Folded-corner "dog-ear" accent, like a real sticky note */
+.task-row::after,
+.today-task-row::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 14px 14px 0;
+  border-color: transparent rgba(0,0,0,0.10) transparent transparent;
+}
+
+.note-low { background: #dff2ff; }
+.note-medium { background: #fff6c4; }
+.note-high { background: #ffe1b3; }
+.note-urgent { background: #ffc9ce; }
+
+.task-row.done,
+.today-task-row.done { opacity: 0.6; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.task-row.done .task-title,
+.today-task-row.done .task-title { text-decoration: line-through; }
 .task-row.dragging { opacity: 0.35; }
-.task-row.drag-over-row { border-color: var(--accent); box-shadow: 0 -2px 0 var(--accent); }
-.drag-handle { cursor: grab; color: var(--text-dim); font-size: 13px; flex-shrink: 0; }
+.task-row.drag-over-row { outline: 2px solid var(--accent); }
+
+.task-row .task-title,
+.today-task-row .task-title { color: #221f14; font-weight: 600; }
+.task-row .task-due,
+.task-row .task-due.overdue,
+.today-task-path { color: rgba(34,31,20,0.6); }
+.task-row .task-due.overdue { color: #a4283a; font-weight: 700; }
+
+.task-row .task-checkbox,
+.today-task-row .task-checkbox {
+  border-color: rgba(34,31,20,0.4);
+}
+.task-row .task-checkbox.checked,
+.today-task-row .task-checkbox.checked {
+  background: #2f9e63; border-color: #2f9e63; color: #fff;
+}
+
+.task-row .icon-btn,
+.today-task-row .icon-btn { color: rgba(34,31,20,0.55); }
+.task-row .icon-btn:hover,
+.today-task-row .icon-btn:hover { background: rgba(0,0,0,0.08); color: #221f14; }
+
+.task-row .priority-badge {
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(0,0,0,0.1);
+  color: #221f14;
+}
+
+.drag-handle { cursor: grab; color: rgba(34,31,20,0.4); font-size: 13px; flex-shrink: 0; }
 .drag-handle:active { cursor: grabbing; }
+
+.archived-tasks-wrap .task-row { opacity: 0.6; cursor: default; transform: none !important; }
 
 .task-checkbox {
   width: 20px; height: 20px;
